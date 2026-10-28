@@ -6,7 +6,7 @@
 const CONFIG = {
   // Pega aquí la URL de tu aplicación web de Google Apps Script publicada
   // Ejemplo: 'https://script.google.com/macros/s/AKfycbx.../exec'
-  SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwDiJyY_0MKunrZIVODttznmwBw4czcxeWoBxH7JDl4D08QAkBu5tiENZtbPgxbX5uD/exec',
+  SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzaViZdF68KClGYSwBhWRs25UWVO2mnWYWUurhRuV2FK9Ek309-y213qGcM7Ng1klCr/exec',
 
   // Si DEMO_MODE es true, la aplicación funcionará con datos de prueba locales
   // sin necesidad de conectarse a Google Apps Script. Ideal para pruebas rápidas

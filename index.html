@@ -189,20 +189,25 @@
 
       <!-- Vista Escritorio: Tabla con cabecera fija -->
       <section class="table-container" aria-label="Tabla de docentes">
-        <table class="docentes-table">
-          <thead>
-            <tr>
-              <th scope="col">Apellidos</th>
-              <th scope="col">Nombres</th>
-              <th scope="col">Estado</th>
-              <th scope="col" class="text-center">Asistió</th>
-              <th scope="col" class="text-center">Sin Usuario</th>
-            </tr>
-          </thead>
-          <tbody id="docentesTableBody">
-            <!-- Las filas se insertan dinámicamente con JavaScript de forma segura -->
-          </tbody>
-        </table>
+        <!-- table-scroll-wrapper maneja el scroll horizontal sin crear un nuevo
+             contexto de scroll en el eje Y, permitiendo que thead sticky
+             funcione correctamente relativo al viewport. -->
+        <div class="table-scroll-wrapper">
+          <table class="docentes-table">
+            <thead>
+              <tr>
+                <th scope="col">Apellidos</th>
+                <th scope="col">Nombres</th>
+                <th scope="col">Estado</th>
+                <th scope="col" class="text-center">Asistió</th>
+                <th scope="col" class="text-center">Sin Usuario</th>
+              </tr>
+            </thead>
+            <tbody id="docentesTableBody">
+              <!-- Las filas se insertan dinámicamente con JavaScript de forma segura -->
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <!-- Vista Móvil: Tarjetas táctiles -->

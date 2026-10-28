@@ -558,19 +558,42 @@ button, input, select {
 /* ==========================================================================
    LISTA DE DOCENTES (VISTA ESCRITORIO: TABLA)
    ========================================================================== */
+
+/*
+ * IMPORTANTE – separación de responsabilidades:
+ *
+ * .table-container  → bordes, sombra y color de fondo visuales.
+ *                     SIN overflow, para que el thead sticky sea relativo
+ *                     al viewport (y no a un contenedor de scroll interno).
+ *
+ * .table-scroll-wrapper → overflow-x: auto para el scroll horizontal en
+ *                         pantallas pequeñas, sin afectar el sticky.
+ *
+ * Si .table-container tuviera overflow-x: auto, el navegador activa también
+ * overflow-y: auto, creando un nuevo contexto de scroll. El thead sticky
+ * quedaría fijo dentro de ese contexto (no del viewport), generando un
+ * espacio vacío de 73 px y ocultando la primera fila de datos detrás del
+ * encabezado de la tabla.
+ */
 .table-container {
   display: none;
   background: var(--bg-card);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-sm);
-  overflow-x: auto;
+  /* SIN overflow aquí — el scroll horizontal lo maneja .table-scroll-wrapper */
 }
 
 @media (min-width: 768px) {
   .table-container {
     display: block;
   }
+}
+
+/* Wrapper interno que permite scroll horizontal sin romper position: sticky */
+.table-scroll-wrapper {
+  overflow-x: auto;
+  border-radius: inherit;
 }
 
 .docentes-table {
@@ -581,9 +604,6 @@ button, input, select {
 
 .docentes-table thead {
   background-color: #f1f5f9;
-  position: sticky;
-  top: 73px; /* Justo debajo del header fijo */
-  z-index: 10;
 }
 
 .docentes-table th {

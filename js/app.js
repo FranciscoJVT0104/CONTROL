@@ -91,14 +91,17 @@
       });
     }
 
-    // Buscador con debounce
+    // Buscador con debounce — escucha 'input' Y 'search' para cubrir:
+    // · escritura normal          → 'input'
+    // · botón × nativo del browser → 'search'
+    // · pegar con mouse            → 'input'
     if (appControls.searchInput) {
-      appControls.searchInput.addEventListener('input', function() {
+      function dispatchSearch() {
         clearTimeout(searchDebounceTimer);
-        searchDebounceTimer = setTimeout(() => {
-          applyFiltersAndRender();
-        }, 200);
-      });
+        searchDebounceTimer = setTimeout(applyFiltersAndRender, 200);
+      }
+      appControls.searchInput.addEventListener('input',  dispatchSearch);
+      appControls.searchInput.addEventListener('search', dispatchSearch); // × nativa
     }
 
     // Filtros rápidos
@@ -266,48 +269,72 @@
   }
 
   /**
-   * Normaliza texto para búsqueda: sin tildes ni acentos, minúsculas, sin espacios extra
+   * Normaliza texto para búsqueda: sin tildes, acentos, minúsculas y espacios extra colapsados.
    */
   function normalizeText(str) {
     if (!str) return '';
     return str
       .toString()
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[\u0300-\u036f]/g, '') // quitar diacríticos/tildes
       .toLowerCase()
+      .replace(/\s+/g, ' ')            // colapsar múltiples espacios en uno
       .trim();
   }
 
   /**
-   * Aplica filtros de texto y botones rápidos, luego renderiza
+   * Construye el texto de búsqueda unificado de un docente:
+   * concatena todos los campos en una sola cadena normalizada
+   * para que cualquier término (o combinación) encuentre coincidencia
+   * sin importar el orden ni el campo de origen.
+   *
+   * Ejemplo: apellidos="ROCA FLORES" nombres="RICARDO"
+   *   → "roca flores ricardo roca flores roca flores ricardo"
+   *      (apellidos | nombres | docente | AP+NOM | NOM+AP)
+   */
+  function buildSearchIndex(docente) {
+    const a = normalizeText(docente.apellidos);
+    const n = normalizeText(docente.nombres);
+    const d = normalizeText(docente.docente);
+    // Incluir combinaciones para búsquedas mixtas tipo "ROCA RICARDO" o "FLORES MARIA"
+    return [a, n, d, a + ' ' + n, n + ' ' + a].filter(Boolean).join(' ');
+  }
+
+  /**
+   * Aplica filtros de estado y búsqueda de texto libre, luego renderiza.
+   *
+   * Estrategia de búsqueda:
+   *  - Se construye un índice de búsqueda por docente (buildSearchIndex).
+   *  - La query se divide en palabras; CADA palabra debe aparecer en el índice
+   *    (AND entre palabras). Esto permite "ROCA FLORES" encontrar "ROCA FLORES RICARDO"
+   *    aunque el usuario escriba palabras de distintos campos.
+   *  - La búsqueda es insensible a tildes, mayúsculas y espacios extra.
    */
   function applyFiltersAndRender() {
     const session = Auth.getSession();
     const currentGrupo = session ? session.grupo : '';
-    const query = normalizeText(appControls.searchInput ? appControls.searchInput.value : '');
+    const rawQuery = appControls.searchInput ? appControls.searchInput.value : '';
+    const query    = normalizeText(rawQuery);
+
+    // Dividir query en palabras individuales para soporte AND entre términos
+    // Ejemplo: "ROCA FLORES" → ["roca", "flores"]
+    const queryWords = query ? query.split(' ').filter(w => w.length > 0) : [];
 
     const filtered = docentesMaster.filter(docente => {
       // 1. Filtro rápido por estado
-      const isAsistio = !!(docente.asistencia && docente.asistencia.trim() !== '');
+      const isAsistio    = !!(docente.asistencia && docente.asistencia.trim() !== '');
       const isSinUsuario = !!(docente.observacion && docente.observacion.toLowerCase().includes('crear usuario'));
 
-      if (currentFilter === 'asistieron' && !isAsistio) return false;
-      if (currentFilter === 'pendientes' && isAsistio) return false;
+      if (currentFilter === 'asistieron' && !isAsistio)    return false;
+      if (currentFilter === 'pendientes' && isAsistio)     return false;
       if (currentFilter === 'sinUsuario' && !isSinUsuario) return false;
 
-      // 2. Filtro de búsqueda por texto (Apellidos, Nombres, Docente)
-      if (query) {
-        const apellidos = normalizeText(docente.apellidos);
-        const nombres = normalizeText(docente.nombres);
-        const fullDocente = normalizeText(docente.docente);
-
-        const matchApellidos = apellidos.includes(query);
-        const matchNombres = nombres.includes(query);
-        const matchDocente = fullDocente.includes(query);
-
-        if (!matchApellidos && !matchNombres && !matchDocente) {
-          return false;
-        }
+      // 2. Filtro de texto libre (solo si hay algo escrito)
+      if (queryWords.length > 0) {
+        const idx = buildSearchIndex(docente);
+        // Todas las palabras de la query deben estar presentes (AND)
+        const allMatch = queryWords.every(word => idx.includes(word));
+        if (!allMatch) return false;
       }
 
       return true;

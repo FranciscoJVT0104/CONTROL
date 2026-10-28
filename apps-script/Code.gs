@@ -196,18 +196,27 @@ function handleGetDocentes(payload) {
     return createJsonResponse({ ok: false, error: 'No se encontró la hoja ' + HOJA_DOCENTES });
   }
 
-  var data = sheet.getDataRange().getValues();
-  if (data.length < 2) {
+  // ─────────────────────────────────────────────────────────
+  // CORRECCIÓN: Usar getLastRow()/getLastColumn() en lugar de
+  // getDataRange() para garantizar que se lean TODAS las filas,
+  // incluso cuando hay celdas vacías en columnas intermedias.
+  // ─────────────────────────────────────────────────────────
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+
+  if (lastRow < 2 || lastCol < 1) {
     return createJsonResponse({ ok: true, docentes: [] });
   }
 
+  var data = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+
   var headers = normalizeHeaders(data[0]);
-  var idxDocente = headers.indexOf('DOCENTE');
-  var idxApellidos = headers.indexOf('APELLIDOS');
-  var idxNombres = headers.indexOf('NOMBRES');
+  var idxDocente    = headers.indexOf('DOCENTE');
+  var idxApellidos  = headers.indexOf('APELLIDOS');
+  var idxNombres    = headers.indexOf('NOMBRES');
   var idxAsistencia = headers.indexOf('ASISTENCIA');
-  var idxGrupo = headers.indexOf('GRUPO');
-  var idxObservacion = headers.indexOf('OBSERVACION');
+  var idxGrupo      = headers.indexOf('GRUPO');
+  var idxObservacion= headers.indexOf('OBSERVACION');
 
   if (idxApellidos === -1 || idxNombres === -1) {
     return createJsonResponse({
@@ -217,30 +226,33 @@ function handleGetDocentes(payload) {
   }
 
   var docentes = [];
-  // Recorrer filas de datos (índice 1 en adelante)
+
   for (var i = 1; i < data.length; i++) {
     var r = data[i];
-    var rowNum = i + 1; // Fila física real en Google Sheets (base 1)
+    var rowNum = i + 1; // Número de fila real en Google Sheets (base 1)
 
-    var apellidos = (idxApellidos !== -1 && r[idxApellidos] !== undefined && r[idxApellidos] !== null) ? r[idxApellidos].toString().trim() : '';
-    var nombres = (idxNombres !== -1 && r[idxNombres] !== undefined && r[idxNombres] !== null) ? r[idxNombres].toString().trim() : '';
-    var docente = (idxDocente !== -1 && r[idxDocente] !== undefined && r[idxDocente] !== null) ? r[idxDocente].toString().trim() : '';
+    // Leer cada campo de forma segura
+    var apellidos  = (idxApellidos  !== -1 && r[idxApellidos]  != null) ? r[idxApellidos].toString().trim()  : '';
+    var nombres    = (idxNombres    !== -1 && r[idxNombres]    != null) ? r[idxNombres].toString().trim()    : '';
+    var docente    = (idxDocente    !== -1 && r[idxDocente]    != null) ? r[idxDocente].toString().trim()    : '';
+    var grupoVal   = (idxGrupo      !== -1 && r[idxGrupo]      != null) ? r[idxGrupo].toString().trim()      : '';
+    var obsVal     = (idxObservacion!== -1 && r[idxObservacion]!= null) ? r[idxObservacion].toString().trim(): '';
 
-    // Si la fila está completamente vacía de nombre y apellido, omitirla
+    // Omitir fila solo si los TRES campos identificadores están vacíos
+    // (evita omitir docentes que solo tienen apellido pero no nombre, etc.)
     if (!apellidos && !nombres && !docente) {
       continue;
     }
 
-    var asistenciaVal = (idxAsistencia !== -1 && r[idxAsistencia] !== undefined && r[idxAsistencia] !== null) ? r[idxAsistencia] : '';
+    // Procesar la asistencia: puede llegar como Date (cuando el Sheet guarda
+    // automáticamente la fecha) o como texto plano escrito por la API.
+    var asistenciaVal = (idxAsistencia !== -1 && r[idxAsistencia] != null) ? r[idxAsistencia] : '';
     var asistenciaStr = '';
     if (asistenciaVal instanceof Date) {
       asistenciaStr = Utilities.formatDate(asistenciaVal, TIMEZONE, 'dd/MM/yyyy HH:mm:ss');
     } else {
       asistenciaStr = asistenciaVal.toString().trim();
     }
-
-    var grupoVal = (idxGrupo !== -1 && r[idxGrupo] !== undefined && r[idxGrupo] !== null) ? r[idxGrupo].toString().trim() : '';
-    var observacionVal = (idxObservacion !== -1 && r[idxObservacion] !== undefined && r[idxObservacion] !== null) ? r[idxObservacion].toString().trim() : '';
 
     docentes.push({
       row: rowNum,
@@ -249,7 +261,7 @@ function handleGetDocentes(payload) {
       nombres: nombres,
       asistencia: asistenciaStr,
       grupo: grupoVal,
-      observacion: observacionVal
+      observacion: obsVal
     });
   }
 
