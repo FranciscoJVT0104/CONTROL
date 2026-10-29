@@ -6,7 +6,7 @@
 const CONFIG = {
   // Pega aquí la URL de tu aplicación web de Google Apps Script publicada
   // Ejemplo: 'https://script.google.com/macros/s/AKfycbx.../exec'
-  SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzaViZdF68KClGYSwBhWRs25UWVO2mnWYWUurhRuV2FK9Ek309-y213qGcM7Ng1klCr/exec',
+  SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzYr_DwDfUtb0G-gJj9qzEilWF6BApkg3p8rFx5OsMm0Q46cOXfJEc1vWek2Qxau2RR/exec',
 
   // Si DEMO_MODE es true, la aplicación funcionará con datos de prueba locales
   // sin necesidad de conectarse a Google Apps Script. Ideal para pruebas rápidas
@@ -15,6 +15,9 @@ const CONFIG = {
 
   // Tiempo límite de espera para las peticiones en milisegundos (15 segundos)
   TIMEOUT_MS: 15000,
+
+  // Intervalo de actualización automática en milisegundos (5 segundos)
+  INTERVALO_ACTUALIZACION: 5000,
 
   // Título y versión de la aplicación
   APP_TITLE: 'Control de Asistencia de Docentes',

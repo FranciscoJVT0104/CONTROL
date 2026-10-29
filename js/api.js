@@ -122,11 +122,73 @@ const Api = (function() {
       }
 
       item.observacion = payload.valor ? 'crear usuario' : '';
+
+      // Si se marca "Sin usuario", marcar automáticamente "Asistió" si no lo estaba
+      let asistenciaActualizada = null;
+      let grupoActualizado = null;
+      if (payload.valor && (!item.asistencia || item.asistencia.trim() === '')) {
+        const ahora = new Date();
+        const pad = (n) => n.toString().padStart(2, '0');
+        const fechaStr = `${pad(ahora.getDate())}/${pad(ahora.getMonth() + 1)}/${ahora.getFullYear()} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}:${pad(ahora.getSeconds())}`;
+        const session = Auth.getSession();
+        item.asistencia = fechaStr;
+        item.grupo = session ? session.grupo : 'GRUPO 1';
+        asistenciaActualizada = item.asistencia;
+        grupoActualizado = item.grupo;
+      }
+
       saveDemoDocentes(docentes);
       return {
         ok: true,
         row: item.row,
-        observacion: item.observacion
+        observacion: item.observacion,
+        asistencia: asistenciaActualizada,
+        grupo: grupoActualizado
+      };
+    }
+
+    if (action === 'agregarDocente') {
+      const apellidos = (payload.apellidos || '').trim().toUpperCase();
+      const nombres   = (payload.nombres   || '').trim().toUpperCase();
+      const dni       = (payload.dni       || '').trim();
+
+      if (!apellidos) return { ok: false, error: 'El campo Apellidos es obligatorio.' };
+      if (!nombres)   return { ok: false, error: 'El campo Nombres es obligatorio.' };
+      if (!/^\d{8}$/.test(dni)) return { ok: false, error: 'El DNI debe contener exactamente 8 dígitos numéricos.' };
+
+      const docentes = getDemoDocentes();
+      // Validar si el DNI ya existe en demo
+      const existeDni = docentes.some(d => (d.dni || '').toString().trim() === dni);
+      if (existeDni) {
+        return { ok: false, error: `El DNI ${dni} ya se encuentra registrado en el sistema.` };
+      }
+
+      const maxRow = docentes.reduce((max, d) => Math.max(max, d.row || 0), 1);
+      const newRow = maxRow + 1;
+      const session = Auth.getSession();
+      const ahora = new Date();
+      const pad = (n) => n.toString().padStart(2, '0');
+      const fechaStr = `${pad(ahora.getDate())}/${pad(ahora.getMonth() + 1)}/${ahora.getFullYear()} ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}:${pad(ahora.getSeconds())}`;
+      const docenteCompuesto = `${apellidos} ${nombres}`;
+
+      const nuevoDocente = {
+        row: newRow,
+        docente: docenteCompuesto,
+        apellidos: apellidos,
+        nombres: nombres,
+        dni: dni,
+        asistencia: fechaStr,
+        grupo: session ? session.grupo : 'GRUPO 1',
+        observacion: 'crear usuario'
+      };
+
+      docentes.push(nuevoDocente);
+      saveDemoDocentes(docentes);
+
+      return {
+        ok: true,
+        message: 'Docente registrado exitosamente.',
+        docente: nuevoDocente
       };
     }
 
@@ -219,6 +281,19 @@ const Api = (function() {
         token: token,
         row: row,
         valor: valor
+      });
+    },
+
+    /**
+     * Agregar un nuevo docente a la base de datos
+     */
+    agregarDocente: function(token, apellidos, nombres, dni) {
+      return request({
+        action: 'agregarDocente',
+        token: token,
+        apellidos: apellidos,
+        nombres: nombres,
+        dni: dni
       });
     },
 

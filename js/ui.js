@@ -39,10 +39,10 @@ const UI = (function() {
 
     const iconSpan = document.createElement('span');
     iconSpan.className = 'toast-icon';
-    if (type === 'success') iconSpan.innerHTML = '✓';
-    else if (type === 'error') iconSpan.innerHTML = '✕';
-    else if (type === 'warning') iconSpan.innerHTML = '⚠';
-    else iconSpan.innerHTML = 'ℹ';
+    if (type === 'success') iconSpan.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+    else if (type === 'error') iconSpan.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
+    else if (type === 'warning') iconSpan.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+    else iconSpan.innerHTML = '<i class="fa-solid fa-circle-info"></i>';
 
     const textSpan = document.createElement('span');
     textSpan.className = 'toast-message';
@@ -67,7 +67,7 @@ const UI = (function() {
     closeBtn.type = 'button';
     closeBtn.className = 'toast-close-btn';
     closeBtn.setAttribute('aria-label', 'Cerrar notificación');
-    closeBtn.innerHTML = '&times;';
+    closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
     closeBtn.onclick = removeToast;
     toast.appendChild(closeBtn);
 
@@ -261,27 +261,27 @@ const UI = (function() {
       if (isAsistio) {
         const badgePresente = document.createElement('span');
         badgePresente.className = 'badge badge-success';
-        badgePresente.textContent = `Presente (${docente.asistencia})`;
+        badgePresente.innerHTML = `<i class="fa-solid fa-check"></i> Presente (${docente.asistencia})`;
         tdEstado.appendChild(badgePresente);
 
         if (marcadoPorOtro) {
           const badgeOtro = document.createElement('span');
           badgeOtro.className = 'badge badge-warning';
-          badgeOtro.textContent = `Por: ${docente.grupo}`;
+          badgeOtro.innerHTML = `<i class="fa-solid fa-users"></i> Por: ${docente.grupo}`;
           badgeOtro.title = `Registrado por el grupo: ${docente.grupo}`;
           tdEstado.appendChild(badgeOtro);
         }
       } else {
         const badgePendiente = document.createElement('span');
         badgePendiente.className = 'badge badge-neutral';
-        badgePendiente.textContent = 'Pendiente';
+        badgePendiente.innerHTML = '<i class="fa-solid fa-clock"></i> Pendiente';
         tdEstado.appendChild(badgePendiente);
       }
 
       if (isSinUsuario) {
         const badgeSinUser = document.createElement('span');
         badgeSinUser.className = 'badge badge-alert';
-        badgeSinUser.textContent = 'Sin usuario';
+        badgeSinUser.innerHTML = '<i class="fa-solid fa-user-xmark"></i> Sin usuario';
         tdEstado.appendChild(badgeSinUser);
       }
 
@@ -300,6 +300,14 @@ const UI = (function() {
       inputCheck.className = 'check-asistencia';
       inputCheck.checked = isAsistio;
       inputCheck.dataset.row = docente.row;
+
+      // REGLA 5: Mientras "Sin usuario" esté marcado, "Asistió" no se puede desmarcar (deshabilitado)
+      if (isSinUsuario) {
+        inputCheck.checked = true;
+        inputCheck.disabled = true;
+        labelCheck.title = 'No se puede desmarcar asistencia mientras esté marcado como "Sin usuario"';
+        labelCheck.classList.add('checkbox-locked');
+      }
 
       inputCheck.addEventListener('change', function(e) {
         handlers.onAsistenciaChange(docente, inputCheck.checked, inputCheck);
@@ -322,7 +330,9 @@ const UI = (function() {
       toggleSinUser.className = `btn-toggle-sin-usuario ${isSinUsuario ? 'active' : ''}`;
       toggleSinUser.setAttribute('aria-pressed', isSinUsuario ? 'true' : 'false');
       toggleSinUser.setAttribute('aria-label', `Alternar sin usuario para ${docente.apellidos}`);
-      toggleSinUser.textContent = isSinUsuario ? 'Sin usuario' : 'Normal';
+      toggleSinUser.innerHTML = isSinUsuario
+        ? '<i class="fa-solid fa-user-xmark"></i> Sin usuario'
+        : '<i class="fa-solid fa-user"></i> Normal';
 
       toggleSinUser.addEventListener('click', function() {
         const nuevoValor = !isSinUsuario;
@@ -358,26 +368,26 @@ const UI = (function() {
       if (isAsistio) {
         const bPres = document.createElement('span');
         bPres.className = 'badge badge-success';
-        bPres.textContent = `Presente (${docente.asistencia})`;
+        bPres.innerHTML = `<i class="fa-solid fa-check"></i> Presente (${docente.asistencia})`;
         badgesContainer.appendChild(bPres);
 
         if (marcadoPorOtro) {
           const bOtro = document.createElement('span');
           bOtro.className = 'badge badge-warning';
-          bOtro.textContent = `Por: ${docente.grupo}`;
+          bOtro.innerHTML = `<i class="fa-solid fa-users"></i> Por: ${docente.grupo}`;
           badgesContainer.appendChild(bOtro);
         }
       } else {
         const bPend = document.createElement('span');
         bPend.className = 'badge badge-neutral';
-        bPend.textContent = 'Pendiente';
+        bPend.innerHTML = '<i class="fa-solid fa-clock"></i> Pendiente';
         badgesContainer.appendChild(bPend);
       }
 
       if (isSinUsuario) {
         const bSin = document.createElement('span');
         bSin.className = 'badge badge-alert';
-        bSin.textContent = 'Sin usuario';
+        bSin.innerHTML = '<i class="fa-solid fa-user-xmark"></i> Sin usuario';
         badgesContainer.appendChild(bSin);
       }
 
@@ -398,6 +408,13 @@ const UI = (function() {
       cardInputCheck.type = 'checkbox';
       cardInputCheck.className = 'check-asistencia-mobile';
       cardInputCheck.checked = isAsistio;
+
+      if (isSinUsuario) {
+        cardInputCheck.checked = true;
+        cardInputCheck.disabled = true;
+        cardCheckLabel.title = 'No se puede desmarcar asistencia mientras esté marcado como "Sin usuario"';
+        cardCheckLabel.classList.add('checkbox-locked');
+      }
 
       cardInputCheck.addEventListener('change', function() {
         handlers.onAsistenciaChange(docente, cardInputCheck.checked, cardInputCheck);
@@ -423,7 +440,9 @@ const UI = (function() {
       mobileToggleSinUser.type = 'button';
       mobileToggleSinUser.className = `btn-toggle-sin-usuario ${isSinUsuario ? 'active' : ''}`;
       mobileToggleSinUser.setAttribute('aria-pressed', isSinUsuario ? 'true' : 'false');
-      mobileToggleSinUser.textContent = isSinUsuario ? 'Sin usuario' : 'Marcar sin usuario';
+      mobileToggleSinUser.innerHTML = isSinUsuario
+        ? '<i class="fa-solid fa-user-xmark"></i> Sin usuario'
+        : '<i class="fa-solid fa-user-plus"></i> Marcar sin usuario';
 
       mobileToggleSinUser.addEventListener('click', function() {
         handlers.onSinUsuarioChange(docente, !isSinUsuario, mobileToggleSinUser);
