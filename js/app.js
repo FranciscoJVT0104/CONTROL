@@ -16,6 +16,8 @@
   let autoRefreshTimer = null;         // ID del intervalo de actualización automática
   let isAutoRefreshing = false;        // Bandera para evitar peticiones acumuladas
   let isSaving = false;                // true mientras se está guardando un cambio en el servidor
+  let refreshSequence = 0;             // Contador para descartar respuestas de red obsoletas en vuelo
+  const pendingRows = new Set();       // Filas con cambios locales en curso (inmunes a sobreescritura de auto-refresh)
   let currentFilter = 'todos';         // 'todos' | 'asistieron' | 'pendientes' | 'sinUsuario'
   let searchDebounceTimer = null;
 
@@ -314,11 +316,19 @@
     const session = Auth.getSession();
     if (!session) return;
 
+    // Registrar número de secuencia para este ciclo
+    const currentSeq = ++refreshSequence;
     isAutoRefreshing = true;
     if (appControls.btnRefresh) appControls.btnRefresh.classList.add('pulse');
 
     try {
       const response = await Api.getDocentes(session.token);
+
+      // Si mientras viajaba esta petición el usuario realizó un cambio (marcar asistencia/sin usuario),
+      // descartar esta respuesta inmediatamente para evitar que datos viejos desmarquen la fila.
+      if (currentSeq !== refreshSequence || isSaving) {
+        return;
+      }
 
       if (!response.ok) {
         if (response.error && response.error.includes('expirada')) {
@@ -334,6 +344,11 @@
       let huboCambios = false;
 
       nuevos.forEach(docNuevo => {
+        // INMUNIDAD: Si esta fila tiene un guardado local reciente o en curso, NO sobreescribir
+        if (pendingRows.has(docNuevo.row)) {
+          return;
+        }
+
         const idx = docentesMaster.findIndex(d => d.row === docNuevo.row);
         if (idx === -1) {
           docentesMaster.push(docNuevo);
@@ -354,7 +369,7 @@
       if (nuevos.length < docentesMaster.length) {
         const rowsNuevos = new Set(nuevos.map(d => d.row));
         const antes = docentesMaster.length;
-        docentesMaster = docentesMaster.filter(d => rowsNuevos.has(d.row));
+        docentesMaster = docentesMaster.filter(d => rowsNuevos.has(d.row) || pendingRows.has(d.row));
         if (docentesMaster.length !== antes) huboCambios = true;
       }
 
@@ -659,6 +674,8 @@
 
     // 3. Actualización Optimista de la UI
     isSaving = true;
+    refreshSequence++;              // Invalida inmediatamente cualquier silentRefresh en vuelo
+    pendingRows.add(docente.row);    // Marca la fila como inmune a sobreescritura
     const anteriorAsistencia = docente.asistencia;
     const anteriorGrupo = docente.grupo;
 
@@ -711,6 +728,10 @@
       );
     } finally {
       isSaving = false;
+      // Mantener la fila inmune 4 segundos para dar tiempo a que Google Sheets sincronice
+      setTimeout(() => {
+        pendingRows.delete(docente.row);
+      }, 4000);
     }
   }
 
@@ -724,6 +745,8 @@
     if (!session) return;
 
     isSaving = true;
+    refreshSequence++;              // Invalida inmediatamente cualquier silentRefresh en vuelo
+    pendingRows.add(docente.row);    // Marca la fila como inmune a sobreescritura
 
     // Guardar estados previos para rollback si falla
     const anteriorObs = docente.observacion;
@@ -784,6 +807,9 @@
       );
     } finally {
       isSaving = false;
+      setTimeout(() => {
+        pendingRows.delete(docente.row);
+      }, 4000);
     }
   }
 
